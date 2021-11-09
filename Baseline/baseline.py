@@ -195,6 +195,7 @@ bel = Belief(map, dx, dy)
 print("Initial belief") 
 print(bel.belief[0,0,:])
 
+# Belief update using range measurements
 print("Belief at t=1")
 bel.update_via_perc(0.5,perc_model, calculate_expected_perc_measurement)
 print(bel.belief[0,0,:])
@@ -207,6 +208,7 @@ print("Belief at t=3")
 bel.update_via_perc(1.3,perc_model, calculate_expected_perc_measurement)
 print(bel.belief[0,0,:])
 
+# Belief updates using odometry measurements
 print("Belief at t=4")
 bel.update_via_motion(0.2,calculate_new_odom_belief)
 print(bel.belief[0,0,:])
