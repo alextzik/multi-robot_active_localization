@@ -70,7 +70,7 @@ class Belief:
         self.belief = self.belief/sum(sum(sum(self.belief)))
 
     # Function that returns the tuple (x,y,orientation) with the highest belief
-    def max_belief(self):
+    def max_belief_idx(self):
         linIndx = np.argmax(self.belief)
         x = int(np.floor(linIndx/(self.dimY*self.numOrients)))
         
@@ -79,7 +79,7 @@ class Belief:
        
         linIndx = np.mod(linIndx, self.numOrients)
         o = linIndx
-        return [x,y,o]
+        return x,y,o
 
 
 ##################################################################
@@ -204,17 +204,7 @@ def motion_model(odomMeasurement, condStateX, condStateY, condStateO, stateX, st
                                                     +(stateY-condStateY)**2+(stateO-condStateO)**2)/(2*(odomMeasurement**2)))
 
 
-
-
-
-
-
-
-
-
-
-
-
+###############################################################################
 #### Testing
 map = np.zeros((7,7))
 map[:,0] = 1
@@ -229,24 +219,61 @@ dy = 10
 
 bel = Belief(map, dx, dy)
 print("Initial belief") 
-print(bel.belief[:,:,0])
+#print(bel.belief[:,:,0])
 
 # # Belief update using range measurements
 print("Belief at t=1")
 bel.update_via_perc(5*10/2,perc_model)
-print(bel.belief[0,0,:])
 
 print("Belief at t=2")
 bel.update_via_perc(10/2,perc_model)
-print(bel.belief[0,0,:])
 
 print("Belief at t=3")
-bel.update_via_perc((5**2)*2,perc_model)
-print(bel.belief[0,0,:])
+bel.update_via_perc(np.sqrt((5**2)*2),perc_model)
 
-print(bel.max_belief())
+print("Max Belief Value using My Function for the Indices")
+print(bel.belief[bel.max_belief_idx()])
+print("Indices of maximum belief")
+print(bel.max_belief_idx())
+print("Max Belief value")
 print(np.max(bel.belief))
-print(bel.belief[1,3,2])
+print("Val of true pos")
+print(bel.belief[3,2,:])
+
+
+
+
+
+# Second example
+bel = Belief(map, dx, dy)
+print("Initial belief") 
+#print(bel.belief[:,:,0])
+
+# # Belief update using range measurements
+print("Belief at t=1")
+bel.update_via_perc(3*np.sqrt(2*(10**2))/2,perc_model)
+
+print("Belief at t=2")
+bel.update_via_perc(5*10/2,perc_model)
+
+print("Belief at t=3")
+bel.update_via_perc(5*10/2,perc_model)
+
+print("Max Belief Value using My Function for the Indices")
+print(bel.belief[bel.max_belief_idx()])
+print("Indices of maximum belief")
+print(bel.max_belief_idx())
+print("Max Belief value")
+print(np.max(bel.belief))
+print("Val of true pos")
+print(bel.belief[1,5,:])
+
+# Comments:
+"""
+We observe that the true position has a belief as large as the maximum belief (example 2) and if the maximum occurs
+further away it is a point that satisfies the measurements (example 1)
+"""
+
 # Belief updates using odometry measurements
 # print("Belief at t=4")
 # bel.update_via_motion(0.2,calculate_new_odom_belief)
