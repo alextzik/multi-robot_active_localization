@@ -1,5 +1,8 @@
 import numpy as np
 from numpy.core.numeric import Inf
+import scipy.stats
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 """
 The following code constructs the belief that an agent is located at any one of 
@@ -29,11 +32,16 @@ class Belief:
         self.dimX = map.shape[0] # x-dimension of map is x-dimension of belief-space
         self.dimY = map.shape[1] # y-dimension of map is y-dimension of belief-space
         self.numOrients = 8 # number of possible orientations 
-        self.map = map # Copy of the environment map
+        self.map = map # Copy of the environment map in the class
         self.dx = dx # x-size of grid cell
         self.dy = dy # y-size of grid cell
-        self.percSigma = 10 # sigma of perception model's distribution
-        self.percDistThresh = 10
+
+        # Perception model constants
+        self.percSigma = 9 # sigma of perception model's distribution
+        self.percDistThresh = 10 # perception distance after which the range sensor does not return a distance
+        self.numOfBins = 21 # odd for symmetry assumed
+        self.BinInterval = np.sqrt(((dx*(self.dimX+1))**2)+((dy*(self.dimY+1))**2))/self.numOfBins
+    
 
         # Initialize belief
         self.belief = np.ones((self.dimX, self.dimY, self.numOrients)) 
@@ -49,7 +57,8 @@ class Belief:
         # Calculate the probability of receiving actual measurement given that we are in state (x,y,o)
         probMeasGivenState = np.zeros((self.belief.shape[0], self.belief.shape[1], self.belief.shape[2]))
         probMeasGivenState = perc_model(actMeasurement*np.ones(self.belief.shape), 
-                                self.expectedPercMeasurements, self.percSigma**np.ones(self.belief.shape))
+                                self.expectedPercMeasurements, self.percSigma*np.ones(self.belief.shape), 
+                                self.BinInterval*np.ones(self.belief.shape))
 
         # Calculate new belief
         self.belief = probMeasGivenState*self.belief
@@ -81,6 +90,14 @@ class Belief:
         o = linIndx
         return x,y,o
 
+    # Plotting function that returns the probability of being at all (x,y) pairs
+    def plot_xy_belief(self):
+        xyBelief = np.max(self.belief, axis=2)
+        sns.heatmap(np.swapaxes(xyBelief, 1, 0), annot=True)
+        plt.xlabel("y Coordinate")
+        plt.ylabel("x Coordinate")
+        plt.title("Maximum Belief at every (x,y)")
+        plt.show()
 
 ##################################################################
 # Functions necessary to update belief after range measurement
@@ -106,58 +123,86 @@ def calculate_expected_perc_measurements(belief, map, dx, dy):
     for cellX in range(0, map.shape[0]):
         for cellY in range(0, map.shape[1]):
             for orientation in range(0, belief.shape[2]):
+                dist = 0
                 if orientation == 0:
                     x = cellX
                     while x!=0 and map[x, cellY]!=1:
                             x = x-1
-                    dist = (cellX-x)*dx-dx/2
-                        
+                    if x!=cellX:
+                        dist = (cellX-x)*dx-dx/2
+                    # else:
+                    #     dist = dx/2
+                            
                 elif orientation == 1:
                     i = 0
                     while cellX-i!=0 and cellY+i!=map.shape[1] and map[cellX-i, cellY+i]!=1:
                         i = i+1
-                    dist = np.sqrt(((cellX-i)*dx)**2 + ((i-cellY)*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
-                
+                    if i!=0:
+                        dist = np.sqrt((i*dx)**2 + (i*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    # else: 
+                    #     np.sqrt((dx/2)**2+(dy/2)**2)
+
                 elif orientation == 2:
                     y = cellY
                     while y!=map.shape[1] and map[cellX, y]!=1:
                         y = y + 1
-                    dist = (y-cellY)*dy - dy/2
+                    if y!=cellY:
+                        dist = (y-cellY)*dy - dy/2
+                    # else:
+                    #     dist = dy/2
 
                 elif orientation == 3:
                     i = 0
                     while cellX+i!=map.shape[0] and cellY+i!=map.shape[1] and map[cellX+i, cellY+i]!=1:
                         i = i+1
-                    dist = np.sqrt(((i-cellX)*dx)**2 + ((i-cellY)*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    if i!=0:
+                        dist = np.sqrt((i*dx)**2 + (i*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    # else:
+                    #     dist = np.sqrt((dx/2)**2+(dy/2)**2)
 
                 elif orientation == 4:
                     x = cellX
                     while x!=map.shape[0] and map[x, cellY]!=1:
                         x = x+1
-                    dist = (x-cellX)*dx - dx/2
+                    if x!=cellX:
+                        dist = (x-cellX)*dx - dx/2
+                    # else:
+                    #     dist = dx/2
                 
                 elif orientation == 5:
                     i = 0
                     while cellX+i!=map.shape[0] and cellY-i!=0 and map[cellX+i, cellY-i]!=1:
                         i = i+1
-                    dist = np.sqrt(((i-cellX)*dx)**2 + ((cellY-i)*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    if i!=0:
+                        dist = np.sqrt((i*dx)**2 + (i*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    else:
+                        dist = np.sqrt((dx/2)**2+(dy/2)**2)
 
                 elif orientation == 6:
                     y = cellY
                     while y!=0 and map[cellX, y]!=1:
                         y = y-1
-                    dist = (cellY-y)*dy - dy/2
+                    if y!=cellY:
+                        dist = (cellY-y)*dy - dy/2
+                    # else:
+                    #     dist = dy/2
                 
                 elif orientation == 7:
                     i = 0
                     while cellX-i!=0 and cellY-i!=0 and map[cellX-i, cellY-i]!=1:
                         i = i+1
-                    dist = np.sqrt(((cellX-i)*dx)**2 + ((cellY-i)*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    if i!=0:
+                        dist = np.sqrt((i*dx)**2 + (i*dy)**2) - np.sqrt((dx/2)**2+(dy/2)**2)
+                    # else:
+                    #     dist = np.sqrt((dx/2)**2+(dy/2)**2)
                 else:
                     print("Error")
                     dist = Inf
                 
+                # if dist<=0:
+                #     print(cellX, cellY, orientation, dist)
                 expectedPercMeasurements[cellX, cellY, orientation] = dist
+    # print(expectedPercMeasurements[6,6,3])
     return expectedPercMeasurements
 
 #######################
@@ -165,9 +210,11 @@ def calculate_expected_perc_measurements(belief, map, dx, dy):
 This function takes as inputs the expected measurement (expMeasurement) and actual measurement
 (actMeasurement) and outputs the probability p(actMeasurement|expMeasurement).
 """
-def perc_model(actMeasurement, expMeasurement, sigma):
-    return 1/(sigma*np.sqrt(2*np.pi))*np.exp(-((actMeasurement-expMeasurement)**2)/(2*(sigma**2))  )
-
+def perc_model(actMeasurement, expMeasurement, sigma, binInterval):
+    prob = scipy.stats.norm(expMeasurement, sigma)
+    binIdx = (np.floor(np.abs(actMeasurement-expMeasurement))/binInterval)
+    
+    return prob.cdf(expMeasurement+((binIdx+1/2)*binInterval))-prob.cdf(expMeasurement+((binIdx-1/2)*binInterval))
 
 
 #####################################################
@@ -214,64 +261,74 @@ map[6,:] = 1
 map[2,1] = 1
 map[3,3] = 1
 map[5,4] = 1
-dx = 10
+dx = 40
 dy = 10
 
+# First Example - Agent at (x=3,y=2)
 bel = Belief(map, dx, dy)
 print("Initial belief") 
 #print(bel.belief[:,:,0])
 
 # # Belief update using range measurements
 print("Belief at t=1")
-bel.update_via_perc(5*10/2,perc_model)
+print("Measurement", 5*40/2+0.003)
+bel.update_via_perc(5*40/2+0.003,perc_model)
 
 print("Belief at t=2")
-bel.update_via_perc(10/2,perc_model)
+print("Measurement", 5*40/2+0.5)
+bel.update_via_perc(5*40/2+0.5,perc_model)
 
 print("Belief at t=3")
-bel.update_via_perc(np.sqrt((5**2)*2),perc_model)
+print("Measurement", 5*40/2+10)
+bel.update_via_perc(5*40/2+10,perc_model)
+print("")
 
-print("Max Belief Value using My Function for the Indices")
-print(bel.belief[bel.max_belief_idx()])
 print("Indices of maximum belief")
 print(bel.max_belief_idx())
+
 print("Max Belief value")
 print(np.max(bel.belief))
+
 print("Val of true pos")
 print(bel.belief[3,2,:])
+print("")
+
+bel.plot_xy_belief()
 
 
+print("######################################")
 
-
-
-# Second example
+# Second example - Agent at (x=5,y=1)
 bel = Belief(map, dx, dy)
 print("Initial belief") 
 #print(bel.belief[:,:,0])
 
-# # Belief update using range measurements
+# # # Belief update using range measurements
 print("Belief at t=1")
-bel.update_via_perc(3*np.sqrt(2*(10**2))/2,perc_model)
+bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.03,perc_model)
 
 print("Belief at t=2")
-bel.update_via_perc(5*10/2,perc_model)
+bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.005,perc_model)
 
 print("Belief at t=3")
-bel.update_via_perc(5*10/2,perc_model)
+bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2)),perc_model)
 
-print("Max Belief Value using My Function for the Indices")
-print(bel.belief[bel.max_belief_idx()])
 print("Indices of maximum belief")
 print(bel.max_belief_idx())
 print("Max Belief value")
 print(np.max(bel.belief))
 print("Val of true pos")
-print(bel.belief[1,5,:])
+print(bel.belief[5,1,:])
+
 
 # Comments:
 """
-We observe that the true position has a belief as large as the maximum belief (example 2) and if the maximum occurs
-further away it is a point that satisfies the measurements (example 1)
+We observe that the true position has a belief as large as the maximum belief and 
+if the indices of the returned maximum are different, then that point also satisfies the measurements.
+
+Also, to test we must provide perturbations of the expected measurement 
+without altering the orientation at the cell with which we get the measurements. To alter the orientation, 
+we would first need the belief to be updated due to the pose change (using update_odom)
 """
 
 # Belief updates using odometry measurements
