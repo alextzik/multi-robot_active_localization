@@ -93,7 +93,7 @@ class Belief:
     # Plotting function that returns the probability of being at all (x,y) pairs
     def plot_xy_belief(self):
         xyBelief = np.max(self.belief, axis=2)
-        sns.heatmap(np.swapaxes(xyBelief, 1, 0), annot=True)
+        sns.heatmap(xyBelief, annot=True) #np.swapaxes(xyBelief, 1, 0)
         plt.xlabel("y Coordinate")
         plt.ylabel("x Coordinate")
         plt.title("Maximum Belief at every (x,y)")
@@ -250,37 +250,40 @@ def motion_model(odomMeasurement, condStateX, condStateY, condStateO, stateX, st
     return 1/(odomMeasurement*np.sqrt(2*np.pi)) *  np.exp(-((stateX-condStateX)**2
                                                     +(stateY-condStateY)**2+(stateO-condStateO)**2)/(2*(odomMeasurement**2)))
 
+#################################################################################
+##### Testing 
+######### Testing script with Tim's AirSim map
+map = np.load("grid_map.npy")
+map = np.pad(map, (1,1), 'constant', constant_values=(1,1))
 
-###############################################################################
-#### Testing
-map = np.zeros((7,7))
-map[:,0] = 1
-map[:,6] = 1
-map[0,:] = 1
-map[6,:] = 1
-map[2,1] = 1
-map[3,3] = 1
-map[5,4] = 1
+# Print map
+sns.heatmap(map, annot=True) 
+plt.xlabel("y Coordinate")
+plt.ylabel("x Coordinate")
+plt.title("Map with dx=40 and dy=10")
+plt.show()
+
+
 dx = 40
 dy = 10
 
-# First Example - Agent at (x=3,y=2)
 bel = Belief(map, dx, dy)
 print("Initial belief") 
 #print(bel.belief[:,:,0])
 
-# # Belief update using range measurements
+# Belief update using range measurements if the agent is located at [10,5,0]
+# The measurements are perturbations of the true expected measurement from that state. 
 print("Belief at t=1")
-print("Measurement", 5*40/2+0.003)
-bel.update_via_perc(5*40/2+0.003,perc_model)
+print("Measurement", 9.5*dx)
+bel.update_via_perc(9.5*dx,perc_model)
 
 print("Belief at t=2")
-print("Measurement", 5*40/2+0.5)
-bel.update_via_perc(5*40/2+0.5,perc_model)
+print("Measurement", 9.5*dx+0.03)
+bel.update_via_perc(9.5*dx+0.03,perc_model)
 
 print("Belief at t=3")
-print("Measurement", 5*40/2+10)
-bel.update_via_perc(5*40/2+10,perc_model)
+print("Measurement", 9.5*dx+0.5)
+bel.update_via_perc(9.5*dx+0.5,perc_model)
 print("")
 
 print("Indices of maximum belief")
@@ -290,56 +293,109 @@ print("Max Belief value")
 print(np.max(bel.belief))
 
 print("Val of true pos")
-print(bel.belief[3,2,:])
+print(bel.belief[10,5,:])
 print("")
 
 bel.plot_xy_belief()
+    # The belief is maximum for the states that can actually acquire these measurements
+print("Some of the Maxium Beliefs")
+print(bel.belief[1,1,4])
+print(bel.belief[1,5,4])
+print(bel.belief[10,5,0])
 
 
-print("######################################")
 
-# Second example - Agent at (x=5,y=1)
-bel = Belief(map, dx, dy)
-print("Initial belief") 
-#print(bel.belief[:,:,0])
+
+######## Previous Testing Script
+# ###############################################################################
+# #### Testing
+# map = np.zeros((7,7))
+# map[:,0] = 1
+# map[:,6] = 1
+# map[0,:] = 1
+# map[6,:] = 1
+# map[2,1] = 1
+# map[3,3] = 1
+# map[5,4] = 1
+# dx = 40
+# dy = 10
+
+# # First Example - Agent at (x=3,y=2)
+# bel = Belief(map, dx, dy)
+# print("Initial belief") 
+# #print(bel.belief[:,:,0])
 
 # # # Belief update using range measurements
-print("Belief at t=1")
-bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.03,perc_model)
+# print("Belief at t=1")
+# print("Measurement", 5*40/2+0.003)
+# bel.update_via_perc(5*40/2+0.003,perc_model)
 
-print("Belief at t=2")
-bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.005,perc_model)
+# print("Belief at t=2")
+# print("Measurement", 5*40/2+0.5)
+# bel.update_via_perc(5*40/2+0.5,perc_model)
 
-print("Belief at t=3")
-bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2)),perc_model)
+# print("Belief at t=3")
+# print("Measurement", 5*40/2+10)
+# bel.update_via_perc(5*40/2+10,perc_model)
+# print("")
 
-print("Indices of maximum belief")
-print(bel.max_belief_idx())
-print("Max Belief value")
-print(np.max(bel.belief))
-print("Val of true pos")
-print(bel.belief[5,1,:])
+# print("Indices of maximum belief")
+# print(bel.max_belief_idx())
+
+# print("Max Belief value")
+# print(np.max(bel.belief))
+
+# print("Val of true pos")
+# print(bel.belief[3,2,:])
+# print("")
+
+# bel.plot_xy_belief()
 
 
-# Comments:
-"""
-We observe that the true position has a belief as large as the maximum belief and 
-if the indices of the returned maximum are different, then that point also satisfies the measurements.
+# print("######################################")
 
-Also, to test we must provide perturbations of the expected measurement 
-without altering the orientation at the cell with which we get the measurements. To alter the orientation, 
-we would first need the belief to be updated due to the pose change (using update_odom)
-"""
+# # Second example - Agent at (x=5,y=1)
+# bel = Belief(map, dx, dy)
+# print("Initial belief") 
+# #print(bel.belief[:,:,0])
 
-# Belief updates using odometry measurements
-# print("Belief at t=4")
-# bel.update_via_motion(0.2,calculate_new_odom_belief)
-# print(bel.belief[0,0,:])
+# # # # Belief update using range measurements
+# print("Belief at t=1")
+# bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.03,perc_model)
 
-# print("Belief at t=5")
-# bel.update_via_motion(1.3,calculate_new_odom_belief)
-# print(bel.belief[0,0,:])
+# print("Belief at t=2")
+# bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2))+0.005,perc_model)
 
-# print("Belief at t=6")
-# bel.update_via_motion(3.1,calculate_new_odom_belief)
-# print(bel.belief[0,0,:])
+# print("Belief at t=3")
+# bel.update_via_perc(1.5*np.sqrt((40**2)+(10**2)),perc_model)
+
+# print("Indices of maximum belief")
+# print(bel.max_belief_idx())
+# print("Max Belief value")
+# print(np.max(bel.belief))
+# print("Val of true pos")
+# print(bel.belief[5,1,:])
+
+
+# # Comments:
+# """
+# We observe that the true position has a belief as large as the maximum belief and 
+# if the indices of the returned maximum are different, then that point also satisfies the measurements.
+
+# Also, to test we must provide perturbations of the expected measurement 
+# without altering the orientation at the cell with which we get the measurements. To alter the orientation, 
+# we would first need the belief to be updated due to the pose change (using update_odom)
+# """
+
+# # Belief updates using odometry measurements
+# # print("Belief at t=4")
+# # bel.update_via_motion(0.2,calculate_new_odom_belief)
+# # print(bel.belief[0,0,:])
+
+# # print("Belief at t=5")
+# # bel.update_via_motion(1.3,calculate_new_odom_belief)
+# # print(bel.belief[0,0,:])
+
+# # print("Belief at t=6")
+# # bel.update_via_motion(3.1,calculate_new_odom_belief)
+# # print(bel.belief[0,0,:])
