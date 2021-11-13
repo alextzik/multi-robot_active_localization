@@ -37,7 +37,7 @@ class Belief:
         self.dy = dy # y-size of grid cell
 
         # Perception model constants
-        self.percSigma = 9 # sigma of perception model's distribution
+        self.percSigma = 30 # sigma of perception model's distribution
         self.percDistThresh = 10 # perception distance after which the range sensor does not return a distance
         self.numOfBins = 21 # odd for symmetry assumed
         self.BinInterval = np.sqrt(((dx*(self.dimX+1))**2)+((dy*(self.dimY+1))**2))/self.numOfBins
@@ -302,6 +302,35 @@ print("Some of the Maxium Beliefs")
 print(bel.belief[1,1,4])
 print(bel.belief[1,5,4])
 print(bel.belief[10,5,0])
+
+
+
+# We also update using the following measurements, assuming we are in position [10,5],
+# but looking at a different orientation (E). The belief produced is worse than before.
+# This occurs because we have turned to obtain the new measurements and hence the belief for [10,5,0] 
+# from previously should now be carried to [10,5,3]
+print("Belief at t=4")
+print("Measurement", 5.5*dy+0.001)
+bel.update_via_perc(5.5*dy+0.001,perc_model)
+
+print("Belief at t=5")
+print("Measurement", 5.5*dy+0.03)
+bel.update_via_perc(5.5*dy+0.03,perc_model)
+
+print("Belief at t=6")
+print("Measurement", 5.5*dy+0.5)
+bel.update_via_perc(5.5*dy+0.5,perc_model)
+
+bel.plot_xy_belief()
+
+
+
+
+
+
+
+
+
 
 
 
