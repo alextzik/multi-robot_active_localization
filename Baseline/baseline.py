@@ -34,16 +34,14 @@ def compute_belief(map, liDAR_data, position_data, dx, dy):
         orient_indces = [int((pointsPerOrient/2-1+(i+1)*pointsPerOrient+j)%numOfPoints) for j in range(1,pointsPerOrient+1)]
         indices.append(orient_indces)
     indices = np.array(indices)
-    for i in range(8):
-        print(indices[i,:])
 
     for i in range(8):
         for j in indices[i,:]:
             if liDAR_data[j,0] >= 0:
                 print("yes")
                 belief.update_via_perc(liDAR_data[j,0],perc_model)
-
         belief.update_via_motion()
+        #belief.update_via_motion(i,(i+1)%8)
     
     belief.plot_xy_belief()
 

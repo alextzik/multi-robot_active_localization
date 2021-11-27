@@ -71,9 +71,11 @@ class Belief:
     """
     The odometry measurement can only be 1, meaning a change of orientation by one level clockwise
     """
-    def update_via_motion(self): #actMeasurement, calculate_new_odom_belief):
+    def update_via_motion(self): #i, j): #actMeasurement, calculate_new_odom_belief):
         prevBelief = self.belief.copy()
 
+        # self.belief[:,:, j] = prevBelief[:,:, i]
+        # self.belief[:,:, i] = prevBelief[:,:, j]
         for i in range (0, prevBelief.shape[2]):
             self.belief[:,:,(i+1)%prevBelief.shape[2]] = prevBelief[:,:,i]
 
