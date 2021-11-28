@@ -30,6 +30,8 @@ The inputs to the constructor are the following:
 
 class Belief:
     def __init__(self, map, dx, dy):
+
+        # Initialize necessary variables
         self.dimX = map.shape[0] # x-dimension of map is x-dimension of belief-space
         self.dimY = map.shape[1] # y-dimension of map is y-dimension of belief-space
         self.numOrients = 8 # number of possible orientations (this is equal to the number of adjacent position-cells)
@@ -38,11 +40,12 @@ class Belief:
         self.dy = dy # y-size of grid cell
 
         # Perception model constants
-        self.percSigma = 30 # sigma of perception model's distribution
-        self.percDistThresh = 10 # perception distance after which the range sensor does not return a distance
+        self.percSigma = 400 # sigma of perception model's distribution (30 was the initial value)
+                             # Given that the agent might not be at the center of each cell, this needs to be a great number to allow 
+                             # for the uncertainty in position within the cell.
+
         self.numOfBins = 21 # odd for symmetry assumed
         self.BinInterval = np.sqrt(((dx*(self.dimX+1))**2)+((dy*(self.dimY+1))**2))/self.numOfBins # bin size, based on maximum distance we may reach
-    
 
         # Initialize belief
         self.belief = np.ones((self.dimX, self.dimY, self.numOrients)) 
@@ -53,7 +56,13 @@ class Belief:
         self.expectedPercMeasurements = calculate_expected_perc_measurements(self.belief, map, dx, dy)
             
     # Function to update belief based on incoming range measurement
-    def update_via_perc(self,actMeasurement, perc_model):
+    """
+    This functions takes in the actual LiDAR measurement, the perception model distribution and the current 
+    orientation (0<=i<=7) and updates the beliefs at all cells and orientations based on the measurement. 
+    Given that the current orientation is known, it assigns zero probability to all other orientations after 
+    performing the update. 
+    """
+    def update_via_perc(self,actMeasurement, perc_model, i):
         
         # Calculate the probability of receiving actual measurement given that we are in state (x,y,o)
         probMeasGivenState = np.zeros((self.belief.shape[0], self.belief.shape[1], self.belief.shape[2]))
@@ -64,14 +73,19 @@ class Belief:
         # Calculate new belief
         self.belief = probMeasGivenState*self.belief
 
+        # Assign zero to orientations difeerent than the current one (i)
+        arr = self.belief.copy()
+        self.belief = np.zeros((self.dimX, self.dimY, self.numOrients)) 
+        self.belief[:,:,i] = arr[:,:,i]
+
         # Normalize new belief
         self.belief = self.belief/sum(sum(sum(self.belief)))
 
     # Function to update belief based on incoming odometry measurement. 
     """
-    The odometry measurement can only be 1, meaning a change of orientation by one level clockwise
+    The odometry measurement can only be 1, meaning a change of orientation by one value clockwise
     """
-    def update_via_motion(self): #i, j): #actMeasurement, calculate_new_odom_belief):
+    def update_via_motion(self): 
         prevBelief = self.belief.copy()
 
         # self.belief[:,:, j] = prevBelief[:,:, i]
@@ -79,15 +93,7 @@ class Belief:
         for i in range (0, prevBelief.shape[2]):
             self.belief[:,:,(i+1)%prevBelief.shape[2]] = prevBelief[:,:,i]
 
-        # # For each position, update the belief
-        # for i in range(self.belief.shape[0]):
-        #     for j in range(self.belief.shape[1]):
-        #         for o in range(self.belief.shape[2]):
-        #             # For each position, update the belief
-        #             self.belief[i,j,o] = calculate_new_odom_belief(actMeasurement, prevBelief, [i, j, o])
-        #self.belief = self.belief/sum(sum(sum(self.belief)))
-
-    # Function that returns the tuple (x,y,orientation) with the highest belief
+    # Function that returns one tuple (x,y,orientation) with the highest belief
     def max_belief_idx(self):
         linIndx = np.argmax(self.belief)
         x = int(np.floor(linIndx/(self.dimY*self.numOrients)))
@@ -100,12 +106,16 @@ class Belief:
         return x,y,o
 
     # Plotting function that returns the probability of being at all (x,y) pairs
+    """
+    Given that the first orientation that updates the belief is North, the last one will be
+    NorthWest. Therefore, only that will have nonzero probability, according to update_via_perc
+    """
     def plot_xy_belief(self):
-        xyBelief = np.max(self.belief, axis=2)
+        xyBelief = self.belief[:,:,7]
         sns.heatmap(xyBelief, annot=True) #np.swapaxes(xyBelief, 1, 0)
         plt.xlabel("y Coordinate")
         plt.ylabel("x Coordinate")
-        plt.title("Maximum Belief at every (x,y)")
+        plt.title("Belief at every (x,y)")
         plt.show()
 
 ##################################################################

@@ -38,6 +38,7 @@ print("")
 
 print("Indices of maximum belief")
 print(bel.max_belief_idx())
+print(np.unravel_index(np.argmax(bel.belief), bel.belief.shape))
 
 print("Max Belief value")
 print(np.max(bel.belief))
