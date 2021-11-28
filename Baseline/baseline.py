@@ -25,16 +25,15 @@ consideration all the measurements and the true position, found in position_data
 It calculates the expected position cell (x,y) accordng to the belief and assumes that is the true location.
 Only orientation 7 has nonzero probabilities, given that it is the last one to be updated.
 """
-def compute_localiz_error(belief, position_data, dx, dy, idx):
-    #x_bel, y_bel = np.unravel_index(np.argmax(belief.belief[:,:,7]), position_data.shape)
+def compute_localiz_error(belief, position_data, dx, dy): 
     x_bel = np.zeros((belief.belief.shape[0], belief.belief.shape[1]))
     y_bel = np.zeros((belief.belief.shape[0], belief.belief.shape[1]))
     for i in range(belief.belief.shape[0]):
         for j in range(belief.belief.shape[1]):
             x_bel[i,j] = i*dx+dx/2
             y_bel[i,j] = j*dy+dy/2
-    x_bel = x_bel*belief.belief[:,:,idx]
-    y_bel = y_bel*belief.belief[:,:,idx]
+    x_bel = x_bel*np.sum(belief.belief, axis=2)
+    y_bel = y_bel*np.sum(belief.belief, axis=2)
     estimatedX = sum(sum(x_bel))
     estimatedY = sum(sum(y_bel))
 
@@ -72,15 +71,10 @@ def compute_belief_and_error(map, liDAR_data, position_data, dx, dy):
     error = [] # localization error after each measurement
     for i in range(8):
         for j in indices[i,:]:
-            # If LiDAR measurement is invalid (-1), do not consider it
-            if liDAR_data[j,0] >= 0:
-                #print("yes")
-                belief.update_via_perc(liDAR_data[j,0], perc_model, i)
-                error.append(compute_localiz_error(belief, position_data, dx, dy, i))
-        if i<7:
-            belief.update_via_motion()
-            error.append(compute_localiz_error(belief, position_data, dx, dy, i))
-    error.append(compute_localiz_error(belief, position_data, dx, dy, 7))
+            belief.update_via_perc(liDAR_data[j,0], perc_model)
+            error.append(compute_localiz_error(belief, position_data, dx, dy))
+        belief.update_via_motion()
+        error.append(compute_localiz_error(belief, position_data, dx, dy))
 
     belief.plot_xy_belief()
 
@@ -92,7 +86,7 @@ This function calculates the error for the final belief of every sample in the d
 """
 def calculate_error_across_dataset(map, liDAR_dataset, positions_dataset, dx, dy):
     errors = []
-    for i in range(liDAR_data.shape[0]):
+    for i in range(100):#liDAR_data.shape[0]):
         print(i)
         bel, error = compute_belief_and_error(map, liDAR_dataset[i,:,:], positions_dataset[i,:,:], dx, dy)
         errors.append(error[len(error)-1])
@@ -110,13 +104,13 @@ plt.title("Map with dx=10 and dy=10")
 plt.show()
 
 # Test belief update for one sample
-res, error = compute_belief_and_error(map, liDAR_data[100,:,:], position_data[100,:,:], dx, dy)
-print(position_data[100,:,:])
+res, error = compute_belief_and_error(map, liDAR_data[4000,:,:], position_data[4000,:,:], dx, dy)
+print(position_data[4000,:,:])
 print(res.shape)
 plt.plot([i for i in range(len(error))], error)
 plt.show()
 
 # Calculate errors across dataset
-errors = calculate_error_across_dataset(map, liDAR_data, position_data, dx, dy)
-plt.plot([i for i in range(len(errors))], errors)
-plt.show()
+# errors = calculate_error_across_dataset(map, liDAR_data, position_data, dx, dy)
+# plt.plot([i for i in range(len(errors))], errors)
+# plt.show()

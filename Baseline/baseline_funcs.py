@@ -40,10 +40,10 @@ class Belief:
         self.dy = dy # y-size of grid cell
 
         # Perception model constants
-        self.percSigma = 400 # sigma of perception model's distribution (30 was the initial value)
+        self.percSigma = 30 # sigma of perception model's distribution (30 was the initial value)
                              # Given that the agent might not be at the center of each cell, this needs to be a great number to allow 
                              # for the uncertainty in position within the cell.
-
+        self.maxDist = 10 # maximum measured distance with LiDAR
         self.numOfBins = 21 # odd for symmetry assumed
         self.BinInterval = np.sqrt(((dx*(self.dimX+1))**2)+((dy*(self.dimY+1))**2))/self.numOfBins # bin size, based on maximum distance we may reach
 
@@ -53,16 +53,14 @@ class Belief:
         self.belief = (1/(self.numOrients*sum(sum(1-map))))*(self.belief*(1-map[:,:,np.newaxis]))
 
         # Calculated expected range measurements for all positions and orientations
-        self.expectedPercMeasurements = calculate_expected_perc_measurements(self.belief, map, dx, dy)
+        self.expectedPercMeasurements = calculate_expected_perc_measurements(self.belief, map, dx, dy, self.maxDist)
             
     # Function to update belief based on incoming range measurement
     """
-    This functions takes in the actual LiDAR measurement, the perception model distribution and the current 
-    orientation (0<=i<=7) and updates the beliefs at all cells and orientations based on the measurement. 
-    Given that the current orientation is known, it assigns zero probability to all other orientations after 
-    performing the update. 
+    This functions takes in the actual LiDAR measurement, the perception model distribution 
+    and updates the beliefs at all cells and orientations based on the measurement. 
     """
-    def update_via_perc(self,actMeasurement, perc_model, i):
+    def update_via_perc(self,actMeasurement, perc_model):
         
         # Calculate the probability of receiving actual measurement given that we are in state (x,y,o)
         probMeasGivenState = np.zeros((self.belief.shape[0], self.belief.shape[1], self.belief.shape[2]))
@@ -72,11 +70,6 @@ class Belief:
 
         # Calculate new belief
         self.belief = probMeasGivenState*self.belief
-
-        # Assign zero to orientations difeerent than the current one (i)
-        arr = self.belief.copy()
-        self.belief = np.zeros((self.dimX, self.dimY, self.numOrients)) 
-        self.belief[:,:,i] = arr[:,:,i]
 
         # Normalize new belief
         self.belief = self.belief/sum(sum(sum(self.belief)))
@@ -111,11 +104,11 @@ class Belief:
     NorthWest. Therefore, only that will have nonzero probability, according to update_via_perc
     """
     def plot_xy_belief(self):
-        xyBelief = self.belief[:,:,7]
-        sns.heatmap(xyBelief, annot=True) #np.swapaxes(xyBelief, 1, 0)
+        xyBelief = np.max(self.belief, axis=2)
+        sns.heatmap(xyBelief, annot=True)
         plt.xlabel("y Coordinate")
         plt.ylabel("x Coordinate")
-        plt.title("Belief at every (x,y)")
+        plt.title("Maximum Belief at every (x,y)")
         plt.show()
 
 ##################################################################
@@ -135,7 +128,7 @@ The orientation convention is as follows:
 6: West
 7: Northwest
 """
-def calculate_expected_perc_measurements(belief, map, dx, dy):
+def calculate_expected_perc_measurements(belief, map, dx, dy, maxDist):
 
     expectedPercMeasurements = np.zeros((belief.shape[0], belief.shape[1], belief.shape[2]))
 
@@ -220,6 +213,8 @@ def calculate_expected_perc_measurements(belief, map, dx, dy):
                 
                 # if dist<=0:
                 #     print(cellX, cellY, orientation, dist)
+                if dist > maxDist:
+                    dist = -1
                 expectedPercMeasurements[cellX, cellY, orientation] = dist
     # print(expectedPercMeasurements[6,6,3])
     return expectedPercMeasurements
